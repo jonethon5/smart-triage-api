@@ -43,4 +43,29 @@ model Ticket {
     atendidoPorId Int?
     atendidoPor Usuario? @relation(fields: [atendidoPorId], references: [id])   
     criadoEm DateTime @default(now()) 
+    classificacao ClassificacaoIA?
+}
+
+
+enum Tipocategoria{
+  TECNICO
+  FINANCEIRO
+  DUVIDA
+  SOLICITACAO
+  OUTRO
+}
+enum Urgencia{
+  BAIXA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+model ClassificacaoIA{
+  id Int @id @default(autoincrement())
+  ticketId Int @unique
+  ticket Ticket @relation(fields: [ticketId], references: [id]) 
+  categoria   Tipocategoria 
+  urgencia Urgencia
+  criadoEm DateTime @default(now()) 
 }
