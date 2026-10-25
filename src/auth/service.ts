@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import { findUserByEmail, createUser } from "./queries";
 import { TipoConta } from "../generated/prisma/client";
+import jwt from "jsonwebtoken";
 
 // Custo do bcrypt: cada +1 dobra o tempo de hash. 10 é o padrão recomendado
 const SALT_ROUNDS = 10;
@@ -53,4 +54,14 @@ export async function loginUser(email: string, senha: string) {
 
   const { senha: _senha, ...safeUser } = existingUser;
   return safeUser;
+}
+
+export async function generateAccessToken(id: number, role: TipoConta) {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("Segredo não encontrado");
+  }
+  const payload = { id, role };
+  const token = jwt.sign(payload, secret, { expiresIn: "15m" });
+  return token;
 }
