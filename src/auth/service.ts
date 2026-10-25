@@ -65,3 +65,14 @@ export async function generateAccessToken(id: number, role: TipoConta) {
   const token = jwt.sign(payload, secret, { expiresIn: "15m" });
   return token;
 }
+
+export async function generateRefreshToken(id: number) {
+  const refreshSecrete = process.env.JWT_REFRESH_SECRET;
+  if (!refreshSecrete) {
+    throw new Error("Refresh secret não encontrado");
+  }
+
+  const payload = { id};
+  const token = jwt.sign(payload, refreshSecrete, { expiresIn: "7d" });
+  return token;
+}
