@@ -7,7 +7,7 @@ WORKDIR /app
 # 3 COPY em duas etapas — o truque do cache
 COPY package*.json ./
 
-# Instala as dependências (incluindo devDependencies para nodemon)
+# Instala as dependências (incluindo devDependencies para o tsx watch)
 RUN npm install
 
 # Copia o resto do código

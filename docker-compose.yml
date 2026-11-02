@@ -1,5 +1,5 @@
 # docker compose up sobe os três serviços de uma vez: app (Node), postgres
-# (banco) e adminer (interface web pra inspecionar o banco em localhost:8080).
+# (banco) e adminer (interface web pra inspecionar o banco em localhost:8081).
 services:
   app:
     build: .
@@ -11,7 +11,7 @@ services:
     depends_on:
       - postgres
     volumes:
-      # código local montado dentro do container: o nodemon detecta a
+      # código local montado dentro do container: o tsx watch detecta a
       # mudança no arquivo e reinicia, sem precisar rebuildar a imagem.
       - .:/app
       # preserva o node_modules instalado dentro do container, para o mount
@@ -26,7 +26,7 @@ services:
     env_file:
       - .env
     ports:
-      # 5433 no host (para não colidir com um Postgres local na 5432) mapeia
+      # 5434 no host (para não colidir com um Postgres local na 5432) mapeia
       # para a porta padrão 5432 dentro do container.
       - "5434:5432"
     volumes:
