@@ -7,6 +7,10 @@
     "start": "tsx src/server.ts",
     "migrate": "prisma migrate dev --config prisma7.config.ts",
     "generate": "prisma generate --config prisma7.config.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "vitest run"
   },
   "keywords": [],
@@ -23,19 +27,19 @@
     "pg": "^8.23.1"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.6.5",
     "@types/pg": "^8.23.1",
-    "@typescript-eslint/eslint-plugin": "^8.72.0",
-    "@typescript-eslint/parser": "^8.72.0",
-    "eslint": "^10.13.0",
+    "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.10",
     "prisma": "^7.10.1",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
     "vitest": "^5.0.5"
   }
 }

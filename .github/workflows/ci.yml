@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      # O prisma7.config.ts lê essa variável, mas o generate não conecta no
+      # banco; um valor falso basta
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Mesma versão do FROM node:22-alpine do Dockerfile
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # src/generated é ignorado pelo git, então o client precisa ser gerado
+      # antes do tsc
+      - run: npx prisma generate --config prisma7.config.ts
+
+      - run: npx tsc --noEmit
+
+      - run: npm run lint
+
+      - run: npm run format:check
