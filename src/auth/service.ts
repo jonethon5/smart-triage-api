@@ -56,7 +56,7 @@ export async function loginUser(email: string, senha: string) {
   return safeUser;
 }
 
-export async function generateAccessToken(id: number, role: TipoConta) {
+export function generateAccessToken(id: number, role: TipoConta) {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     throw new Error("Segredo não encontrado");
@@ -66,13 +66,13 @@ export async function generateAccessToken(id: number, role: TipoConta) {
   return token;
 }
 
-export async function generateRefreshToken(id: number) {
-  const refreshSecrete = process.env.JWT_REFRESH_SECRET;
-  if (!refreshSecrete) {
+export function generateRefreshToken(id: number) {
+  const refreshSecret = process.env.JWT_REFRESH_SECRET;
+  if (!refreshSecret) {
     throw new Error("Refresh secret não encontrado");
   }
 
   const payload = { id};
-  const token = jwt.sign(payload, refreshSecrete, { expiresIn: "7d" });
+  const token = jwt.sign(payload, refreshSecret,{ expiresIn: "7d" });
   return token;
 }
