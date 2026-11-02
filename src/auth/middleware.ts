@@ -23,7 +23,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
     }
     req.user = { id: decoded.id, role: decoded.role };
     next();
-  } catch (error) {
+  } catch {
     return res.status(401).json({ error: "Token inválido" });
   }
 }
