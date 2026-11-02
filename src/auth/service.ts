@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import { findUserByEmail, createUser } from "./queries";
 import { TipoConta } from "../generated/prisma/client";
 import jwt from "jsonwebtoken";
+import { EmailAlreadyRegisteredError, InvalidCredentialsError } from "./errors";
 
 // Custo do bcrypt: cada +1 dobra o tempo de hash. 10 é o padrão recomendado
 const SALT_ROUNDS = 10;
@@ -25,7 +26,7 @@ export async function registerUser(
 ) {
   const existingUser = await findUserByEmail(email);
   if (existingUser) {
-    throw new Error("Esse email já está cadastrado");
+    throw new EmailAlreadyRegisteredError();
   }
 
   // Nunca salva a senha em texto puro no banco
@@ -44,12 +45,12 @@ export async function loginUser(email: string, senha: string) {
   // Mesma mensagem para email inexistente e senha errada, para não revelar
   // quais emails estão cadastrados
   if (!existingUser) {
-    throw new Error("Credenciais inválidas");
+    throw new InvalidCredentialsError();
   }
 
   const isPasswordValid = await comparePassword(senha, existingUser.senha);
   if (!isPasswordValid) {
-    throw new Error("Credenciais inválidas");
+    throw new InvalidCredentialsError();
   }
 
   const { senha: _senha, ...safeUser } = existingUser;
@@ -72,7 +73,7 @@ export function generateRefreshToken(id: number) {
     throw new Error("Refresh secret não encontrado");
   }
 
-  const payload = { id};
-  const token = jwt.sign(payload, refreshSecret,{ expiresIn: "7d" });
+  const payload = { id };
+  const token = jwt.sign(payload, refreshSecret, { expiresIn: "7d" });
   return token;
 }
