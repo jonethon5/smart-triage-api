@@ -1,4 +1,5 @@
 import express from "express";
+import { authRouter } from "./auth/routes";
 
 const app = express();
 
@@ -11,3 +12,5 @@ app.get("/health", (req, res) => {
 app.listen(3000, () => {
   console.log("Server is running on port 3000");
 });
+
+app.use("/auth", authRouter);
