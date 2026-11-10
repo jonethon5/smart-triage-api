@@ -7,6 +7,7 @@ import {
   generateRefreshToken,
 } from "./service";
 import { EmailAlreadyRegisteredError, InvalidCredentialsError } from "./errors";
+import { authenticate } from "./middleware";
 
 export const authRouter = Router();
 
@@ -47,4 +48,8 @@ authRouter.post("/login", async (req, res) => {
     console.error(error);
     return res.status(500).json({ error: "Erro interno do servidor" });
   }
+});
+
+authRouter.get("/me", authenticate, (req, res) => {
+  return res.json(req.user);
 });
