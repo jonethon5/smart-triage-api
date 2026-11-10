@@ -7,7 +7,11 @@ import {
   generateRefreshToken,
   refreshAccessToken,
 } from "./service";
-import { EmailAlreadyRegisteredError, InvalidCredentialsError, InvalidRefreshTokenError } from "./errors";
+import {
+  EmailAlreadyRegisteredError,
+  InvalidCredentialsError,
+  InvalidRefreshTokenError,
+} from "./errors";
 import { authenticate } from "./middleware";
 
 export const authRouter = Router();
@@ -54,8 +58,6 @@ authRouter.post("/login", async (req, res) => {
 authRouter.get("/me", authenticate, (req, res) => {
   return res.json(req.user);
 });
-
-
 
 authRouter.post("/refresh", async (req, res) => {
   const { refreshToken } = req.body ?? {};
