@@ -1,8 +1,12 @@
 import bcrypt from "bcrypt";
-import { findUserByEmail, createUser } from "./queries";
+import { findUserByEmail, createUser, findUserById } from "./queries";
 import { TipoConta } from "../generated/prisma/client";
 import jwt from "jsonwebtoken";
-import { EmailAlreadyRegisteredError, InvalidCredentialsError } from "./errors";
+import {
+  EmailAlreadyRegisteredError,
+  InvalidCredentialsError,
+  InvalidRefreshTokenError,
+} from "./errors";
 
 // Custo do bcrypt: cada +1 dobra o tempo de hash. 10 é o padrão recomendado
 const SALT_ROUNDS = 10;
@@ -76,4 +80,28 @@ export function generateRefreshToken(id: number) {
   const payload = { id };
   const token = jwt.sign(payload, refreshSecret, { expiresIn: "7d" });
   return token;
+}
+
+export async function refreshAccessToken(refreshToken: string) {
+  const refreshSecret = process.env.JWT_REFRESH_SECRET;
+
+  if (!refreshSecret) {
+    throw new Error("Refresh secret não encontrado");
+  }
+
+  let decoded: string | jwt.JwtPayload;
+  try {
+    decoded = jwt.verify(refreshToken, refreshSecret);
+  } catch {
+    throw new InvalidRefreshTokenError();
+  }
+
+  if (typeof decoded === "string") {
+    throw new InvalidRefreshTokenError();
+  }
+  const user = await findUserById(decoded.id);
+  if (!user) {
+    throw new InvalidRefreshTokenError();
+  }
+  return generateAccessToken(user.id, user.role);
 }
