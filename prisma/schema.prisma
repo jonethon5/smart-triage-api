@@ -47,7 +47,7 @@ model Ticket {
 }
 
 
-enum Tipocategoria{
+enum TipoCategoria{
   TECNICO
   FINANCEIRO
   DUVIDA
@@ -65,7 +65,7 @@ model ClassificacaoIA{
   id Int @id @default(autoincrement())
   ticketId Int @unique
   ticket Ticket @relation(fields: [ticketId], references: [id]) 
-  categoria   Tipocategoria 
+  categoria   TipoCategoria
   urgencia Urgencia
   criadoEm DateTime @default(now()) 
 }

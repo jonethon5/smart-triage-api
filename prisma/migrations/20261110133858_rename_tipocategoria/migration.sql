@@ -1,0 +1,1 @@
+   ALTER TYPE "Tipocategoria" RENAME TO "TipoCategoria";
