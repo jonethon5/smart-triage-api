@@ -22,3 +22,17 @@ export async function findTickets(status?: StatusTicket) {
     orderBy: { criadoEm: "desc" },
   });
 }
+
+export async function assignTicket(id: number, atendenteId: number) {
+  return prisma.ticket.update({
+    where: { id },
+    data: { atendidoPorId: atendenteId, status: "EM_ANDAMENTO" },
+  });
+}
+
+export async function closeTicket(id: number) {
+  return prisma.ticket.update({
+    where: { id },
+    data: { status: "FECHADO", resolvido: true },
+  });
+}
