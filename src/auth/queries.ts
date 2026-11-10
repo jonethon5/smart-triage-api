@@ -14,3 +14,7 @@ export async function createUser(
 ) {
   return prisma.usuario.create({ data: { email, senha, role } });
 }
+
+export async function findUserById(id: number) {
+  return prisma.usuario.findUnique({ where: { id } });
+}
