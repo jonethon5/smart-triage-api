@@ -5,8 +5,9 @@ import {
   loginUser,
   generateAccessToken,
   generateRefreshToken,
+  refreshAccessToken,
 } from "./service";
-import { EmailAlreadyRegisteredError, InvalidCredentialsError } from "./errors";
+import { EmailAlreadyRegisteredError, InvalidCredentialsError, InvalidRefreshTokenError } from "./errors";
 import { authenticate } from "./middleware";
 
 export const authRouter = Router();
@@ -52,4 +53,24 @@ authRouter.post("/login", async (req, res) => {
 
 authRouter.get("/me", authenticate, (req, res) => {
   return res.json(req.user);
+});
+
+
+
+authRouter.post("/refresh", async (req, res) => {
+  const { refreshToken } = req.body ?? {};
+  if (typeof refreshToken !== "string") {
+    return res.status(400).json({ error: "Token de atualização inválido" });
+  }
+  try {
+    const accessToken = await refreshAccessToken(refreshToken);
+
+    return res.status(200).json({ accessToken });
+  } catch (error) {
+    if (error instanceof InvalidRefreshTokenError) {
+      return res.status(401).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
 });
