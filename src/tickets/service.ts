@@ -1,9 +1,17 @@
-import { findTicketById, assignTicket, closeTicket } from "./queries";
+import {
+  findTicketById,
+  assignTicket,
+  closeTicket,
+  createTicket,
+  findTickets,
+} from "./queries";
 import {
   TicketNotFoundError,
   TicketNotAvailableError,
   TicketForbiddenError,
 } from "./errors";
+
+import type { StatusTicket } from "../generated/prisma/client";
 
 export async function getTicket(id: number) {
   const ticket = await findTicketById(id);
@@ -31,4 +39,17 @@ export async function finishTicket(id: number, atendenteId: number) {
     throw new TicketForbiddenError();
   }
   return closeTicket(id);
+}
+
+export async function openTicket(
+  nomeSolicitante: string,
+  emailSolicitante: string,
+  titulo: string,
+  descricao: string,
+) {
+  return createTicket(nomeSolicitante, emailSolicitante, titulo, descricao);
+}
+
+export async function listTickets(status?: StatusTicket) {
+  return findTickets(status);
 }
