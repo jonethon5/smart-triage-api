@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { openTicket, listTickets, getTicket } from "./service";
+import { openTicket, listTickets, getTicket, takeTicket } from "./service";
 import { authenticate } from "../auth/middleware";
 import { StatusTicket } from "../generated/prisma/client";
-import { TicketNotFoundError } from "./errors";
+import { TicketNotFoundError, TicketNotAvailableError } from "./errors";
 
 export const ticketsRouter = Router();
 
@@ -67,6 +67,31 @@ ticketsRouter.get("/:id", authenticate, async (req, res) => {
     // se for TicketNotFoundError: 404 com { error: error.message }
     if (error instanceof TicketNotFoundError) {
       return res.status(404).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+ticketsRouter.patch("/:id/assumir", authenticate, async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ error: "Id inválido" });
+  }
+
+  if (!req.user) {
+    return res.status(401).json({ error: "Autorização necessária" });
+  }
+  try {
+    const ticket = await takeTicket(id, req.user.id);
+    return res.status(200).json(ticket);
+  } catch (error) {
+    if (error instanceof TicketNotFoundError) {
+      return res.status(404).json({ error: error.message });
+    }
+    if (error instanceof TicketNotAvailableError) {
+      return res.status(409).json({ error: error.message });
     }
     console.error(error);
     return res.status(500).json({ error: "Erro interno do servidor" });
