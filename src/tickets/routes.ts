@@ -1,8 +1,18 @@
 import { Router } from "express";
-import { openTicket, listTickets, getTicket, takeTicket } from "./service";
+import {
+  openTicket,
+  listTickets,
+  getTicket,
+  takeTicket,
+  finishTicket,
+} from "./service";
 import { authenticate } from "../auth/middleware";
 import { StatusTicket } from "../generated/prisma/client";
-import { TicketNotFoundError, TicketNotAvailableError } from "./errors";
+import {
+  TicketNotFoundError,
+  TicketNotAvailableError,
+  TicketForbiddenError,
+} from "./errors";
 
 export const ticketsRouter = Router();
 
@@ -92,6 +102,34 @@ ticketsRouter.patch("/:id/assumir", authenticate, async (req, res) => {
     }
     if (error instanceof TicketNotAvailableError) {
       return res.status(409).json({ error: error.message });
+    }
+    console.error(error);
+    return res.status(500).json({ error: "Erro interno do servidor" });
+  }
+});
+
+ticketsRouter.patch("/:id/fechar", authenticate, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ error: "Id inválido" });
+  }
+  if (!req.user) {
+    return res.status(401).json({ error: "Autorização necessária" });
+  }
+
+  try {
+    const ticket = await finishTicket(id, req.user.id);
+    return res.status(200).json(ticket);
+  } catch (error) {
+    if (error instanceof TicketNotFoundError) {
+      return res.status(404).json({ error: error.message });
+    }
+    if (error instanceof TicketNotAvailableError) {
+      return res.status(409).json({ error: error.message });
+    }
+
+    if (error instanceof TicketForbiddenError) {
+      return res.status(403).json({ error: error.message });
     }
     console.error(error);
     return res.status(500).json({ error: "Erro interno do servidor" });
