@@ -12,6 +12,7 @@ import {
 } from "./errors";
 
 import type { StatusTicket } from "../generated/prisma/client";
+import { classificarESalvar } from "../ia/service";
 
 export async function getTicket(id: number) {
   const ticket = await findTicketById(id);
@@ -47,7 +48,19 @@ export async function openTicket(
   titulo: string,
   descricao: string,
 ) {
-  return createTicket(nomeSolicitante, emailSolicitante, titulo, descricao);
+  const ticket = await createTicket(
+    nomeSolicitante,
+    emailSolicitante,
+    titulo,
+    descricao,
+  );
+
+  classificarESalvar(ticket.id, ticket.titulo, ticket.descricao).catch(
+    (error) => {
+      console.error("Falha ao classificar o ticket", ticket.id, error);
+    },
+  );
+  return ticket;
 }
 
 export async function listTickets(status?: StatusTicket) {
