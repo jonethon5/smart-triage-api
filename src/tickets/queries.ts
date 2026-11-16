@@ -13,7 +13,10 @@ export async function createTicket(
 }
 
 export async function findTicketById(id: number) {
-  return prisma.ticket.findUnique({ where: { id } });
+  return prisma.ticket.findUnique({
+    where: { id },
+    include: { classificacao: true },
+  });
 }
 
 export async function findTickets(status?: StatusTicket) {
