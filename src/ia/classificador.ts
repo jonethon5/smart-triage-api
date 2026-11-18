@@ -1,6 +1,9 @@
 import { TipoCategoria, Urgencia } from "../generated/prisma/client";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ApiError } from "@google/genai";
 
+function esperar(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 export class ClassificacaoInvalidaError extends Error {
   // constructor, super("Resposta da IA inválida"), this.name (igual ao tickets/errors.ts)
   constructor() {
@@ -62,13 +65,34 @@ export async function classificarTicket(titulo: string, descricao: string) {
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY não encontrada");
   }
+
   const ai = new GoogleGenAI({ apiKey });
 
-  const response = await ai.models.generateContent({
-    model: MODELO,
-    contents: montarPrompt(titulo, descricao),
-    config: { responseMimeType: "application/json" },
-  });
+  const MAX_TENTATIVAS = 3;
+
+  let response;
+  for (let tentativa = 1; tentativa <= MAX_TENTATIVAS; tentativa++) {
+    try {
+      response = await ai.models.generateContent({
+        model: MODELO,
+        contents: montarPrompt(titulo, descricao),
+        config: { responseMimeType: "application/json" },
+      });
+      break;
+    } catch (error) {
+      const ehUltima = tentativa === MAX_TENTATIVAS;
+      const ehOcupado = error instanceof ApiError && error.status === 503;
+
+      if (!ehOcupado || ehUltima) {
+        throw error;
+      }
+      await esperar(3000 * tentativa);
+    }
+  }
+
+  if (!response) {
+    throw new ClassificacaoInvalidaError();
+  }
 
   const texto = response.text;
 
