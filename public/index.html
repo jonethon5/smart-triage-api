@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Smart Triage</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="topo">
+      <span class="marca">Smart Triage</span>
+      <nav class="nav">
+        <button type="button" class="nav-botao" data-ir="abrir">
+          Abrir ticket
+        </button>
+        <button type="button" class="nav-botao" data-ir="atendente">
+          Área do atendente
+        </button>
+        <button type="button" class="nav-botao" id="btn-sair" hidden>
+          Sair
+        </button>
+      </nav>
+    </header>
+
+    <main class="conteudo">
+      <!-- 1. Abrir ticket (público) -->
+      <section id="view-abrir" class="cartao">
+        <h1>Abrir um ticket</h1>
+        <p class="sub">Descreva o problema e nossa equipe vai te atender.</p>
+
+        <form id="form-ticket" class="form">
+          <label>
+            Seu nome
+            <input name="nomeSolicitante" type="text" required />
+          </label>
+          <label>
+            Seu e-mail
+            <input name="emailSolicitante" type="email" required />
+          </label>
+          <label>
+            Título
+            <input name="titulo" type="text" required />
+          </label>
+          <label>
+            Descrição
+            <textarea name="descricao" rows="5" required></textarea>
+          </label>
+          <button type="submit" class="botao primario">Enviar ticket</button>
+          <p class="msg" id="msg-ticket" role="alert" hidden></p>
+        </form>
+
+        <div id="confirmacao-ticket" class="confirmacao" hidden>
+          <p class="confirmacao-titulo">Ticket aberto com sucesso!</p>
+          <p>Número do seu ticket: <strong id="ticket-criado-id"></strong></p>
+          <p class="sub">Guarde esse número para acompanhar o atendimento.</p>
+          <button type="button" class="botao" id="btn-novo-ticket">
+            Abrir outro ticket
+          </button>
+        </div>
+      </section>
+
+      <!-- 2. Login do atendente -->
+      <section id="view-login" class="cartao" hidden>
+        <h1>Entrar como atendente</h1>
+        <form id="form-login" class="form">
+          <label>
+            E-mail
+            <input name="email" type="email" autocomplete="username" required />
+          </label>
+          <label>
+            Senha
+            <input
+              name="senha"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </label>
+          <button type="submit" class="botao primario">Entrar</button>
+          <p class="msg" id="msg-login" role="alert" hidden></p>
+        </form>
+      </section>
+
+      <!-- 3. Lista de tickets (logado) -->
+      <section id="view-lista" hidden>
+        <div class="lista-topo">
+          <h1>Tickets</h1>
+          <div class="filtros">
+            <label class="filtro">
+              Status
+              <select id="filtro-status">
+                <option value="">Todos</option>
+                <option value="ABERTO">Aberto</option>
+                <option value="EM_ANDAMENTO">Em andamento</option>
+                <option value="FECHADO">Fechado</option>
+              </select>
+            </label>
+            <button type="button" class="botao" id="btn-atualizar">
+              Atualizar
+            </button>
+          </div>
+        </div>
+        <p class="msg" id="msg-lista" role="status" hidden></p>
+        <ul id="lista-tickets" class="lista"></ul>
+      </section>
+    </main>
+  </body>
+</html>
