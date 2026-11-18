@@ -22,6 +22,7 @@ export async function findTicketById(id: number) {
 export async function findTickets(status?: StatusTicket) {
   return prisma.ticket.findMany({
     where: { status },
+    include: { classificacao: true },
     orderBy: { criadoEm: "desc" },
   });
 }
