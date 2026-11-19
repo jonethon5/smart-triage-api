@@ -311,20 +311,28 @@ function criarCardTicket(ticket) {
   msg.hidden = true;
   msg.setAttribute("role", "alert");
 
+  // Só mostra a ação que a API aceita no status atual: Aberto pode ser
+  // assumido, Em andamento pode ser fechado, Fechado não tem ação. Depois
+  // de uma ação, carregarTickets() redesenha o cartão com o status novo.
   const acoes = criar("div", "acoes");
-  const btnAssumir = criar("button", "botao", "Assumir");
-  btnAssumir.type = "button";
-  btnAssumir.addEventListener("click", () =>
-    executarAcao(ticket.id, "assumir", btnAssumir, msg),
-  );
-  const btnFechar = criar("button", "botao", "Fechar");
-  btnFechar.type = "button";
-  btnFechar.addEventListener("click", () =>
-    executarAcao(ticket.id, "fechar", btnFechar, msg),
-  );
-  acoes.append(btnAssumir, btnFechar);
+  if (ticket.status === "ABERTO") {
+    const btnAssumir = criar("button", "botao", "Assumir");
+    btnAssumir.type = "button";
+    btnAssumir.addEventListener("click", () =>
+      executarAcao(ticket.id, "assumir", btnAssumir, msg),
+    );
+    acoes.append(btnAssumir);
+  } else if (ticket.status === "EM_ANDAMENTO") {
+    const btnFechar = criar("button", "botao", "Fechar");
+    btnFechar.type = "button";
+    btnFechar.addEventListener("click", () =>
+      executarAcao(ticket.id, "fechar", btnFechar, msg),
+    );
+    acoes.append(btnFechar);
+  }
 
-  li.append(acoes, msg);
+  if (acoes.childElementCount > 0) li.append(acoes);
+  li.append(msg);
   return li;
 }
 
