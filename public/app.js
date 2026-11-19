@@ -328,6 +328,19 @@ function criarCardTicket(ticket) {
   return li;
 }
 
+// A classificação roda em segundo plano logo após a criação e, se falhar,
+// não é refeita. Passado esse prazo sem classificação, o ticket não vai
+// mais ser classificado, então "classificando..." deixaria de ser verdade.
+const PRAZO_CLASSIFICACAO_MS = 2 * 60 * 1000;
+
+function textoSemClassificacao(ticket) {
+  const criadoEm = new Date(ticket.criadoEm).getTime();
+  if (Number.isNaN(criadoEm)) return "sem classificação";
+  return Date.now() - criadoEm < PRAZO_CLASSIFICACAO_MS
+    ? "classificando..."
+    : "sem classificação";
+}
+
 // A classificação pode vir na própria listagem. Se o campo nem existir
 // no objeto (a listagem atual da API não inclui), busca o detalhe do
 // ticket, que inclui. null = a IA ainda não classificou.
@@ -351,7 +364,9 @@ async function preencherClassificacao(ticket, area) {
 
   area.replaceChildren();
   if (!classificacao) {
-    area.append(criar("span", "etiqueta pendente", "classificando..."));
+    area.append(
+      criar("span", "etiqueta pendente", textoSemClassificacao(ticket)),
+    );
     return;
   }
   area.append(
