@@ -11,7 +11,8 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "avaliar": "tsx src/ia/avaliacao.ts"
   },
   "keywords": [],
   "author": "",
