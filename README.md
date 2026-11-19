@@ -111,7 +111,7 @@ Modelo: `gemini-3.5-flash`. O prompt pede a resposta só em JSON (`{"categoria":
 
 O script [src/ia/avaliacao.ts](src/ia/avaliacao.ts) (`npm run avaliar`) classifica um gabarito de **15 tickets escritos à mão** e compara com a resposta esperada para cada um. O gabarito inclui casos feitos para confundir o modelo: dúvida com palavra técnica, tickets curtos e vagos, problema grave contado com calma, pedido banal escrito em caixa alta, dois assuntos no mesmo ticket e urgência alta sem nenhuma dica explícita. Uma chamada que falha (por exemplo, `503`) é contada à parte e fica fora do total avaliado.
 
-Resultado da execução de 17/11/2026, com `gemini-3.5-flash` e o prompt v1:
+Resultado da execução de **17/11/2026**, modelo `gemini-3.5-flash`, prompt **v1**:
 
 | Dimensão  | Acertos | Taxa      | Piso de referência (sempre a classe mais frequente) |
 | --------- | ------- | --------- | --------------------------------------------------- |
@@ -136,9 +136,60 @@ Os dois tickets `OUTRO` do gabarito foram classificados como `SOLICITACAO`.
 - **O prompt ainda não foi refinado.** É a primeira versão, sem ajustes feitos a partir dos erros observados.
 - O piso de referência da tabela foi calculado sobre os 15 tickets do gabarito. Sem "Chamados não abre" (`TECNICO`/`ALTA`), nos 14 avaliados, o piso fica em 6/14 (~43%) tanto em categoria quanto em urgência.
 
+### Como reproduzir a taxa de acerto
+
+1. **Clonar o repositório** e copiar `.env.example` para `.env`:
+
+   ```bash
+   git clone https://github.com/jonethon5/smart-triage-api.git
+   cd smart-triage-api
+   cp .env.example .env
+   ```
+
+2. **Gerar uma chave gratuita do Gemini** em https://aistudio.google.com/apikey e colocar em `GEMINI_API_KEY` no `.env`. Cada pessoa usa a própria chave; a do autor não está no repositório.
+
+3. **Subir os containers:**
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+4. **Aplicar as migrations e gerar o Prisma Client** dentro do container (mesmos scripts da seção [Como rodar](#como-rodar)):
+
+   ```bash
+   docker compose exec app npm run migrate
+   docker compose exec app npm run generate
+   ```
+
+5. **Rodar a avaliação:**
+
+   ```bash
+   docker compose exec app npm run avaliar
+   ```
+
+Exemplo de saída, de uma execução **parcial** de 18/11/2026: 5 das 15 chamadas falharam (3 com `503` e 2 com `429`), e as linhas de erro e stack trace dessas chamadas foram omitidas. O trecho serve para mostrar o formato da saída, **não a taxa de acerto**; o resultado de referência é o da tabela em [Avaliação de acerto](#avaliação-de-acerto).
+
+```
+✗ "Pagamentos via Pix não estão sendo confirmados"
+   categoria: esperada FINANCEIRO, veio TECNICO
+   urgência:  esperada URGENTE, veio URGENTE
+✗ "Preciso de ajuda"
+   categoria: esperada OUTRO, veio SOLICITACAO
+   urgência:  esperada BAIXA, veio BAIXA
+
+--- Resultado ---
+Categoria: 8/10 (80.0%)
+Urgência:  10/10 (100.0%)
+Falhas de chamada: 5/15
+```
+
+> **O resultado varia entre execuções.** O modelo não é determinístico, e chamadas que falham (`503` por sobrecarga do Gemini, `429` por cota) ficam fora do total avaliado. Na execução acima, 3 chamadas deram `503` e 2 deram `429`: o plano gratuito tem um limite diário de requisições por modelo, e a avaliação sozinha usa 15.
+
+São cerca de 15 chamadas ao Gemini, de 10 a 50 s cada, então a avaliação leva alguns minutos no total.
+
 ## Decisões de design
 
-1. **Classificação em segundo plano.** `POST /tickets` salva o ticket e responde `201` sem esperar o Gemini. A classificação é disparada depois, sem `await`, e o erro é só registrado no log. Motivo: a chamada ao Gemini leva de 10 a 60 segundos e pode falhar com `503`; quem abre o ticket não deve esperar isso nem receber erro por causa disso. Consequência: se a classificação falhar, o ticket fica sem classificação (`classificacao: null`) e hoje não há nova tentativa.
+1. **Classificação em segundo plano.** `POST /tickets` salva o ticket e responde `201` sem esperar o Gemini. A classificação é disparada depois, sem `await`, e o erro é só registrado no log. Motivo: a chamada ao Gemini leva de 10 a 60 segundos e pode falhar com `503`; quem abre o ticket não deve esperar isso nem receber erro por causa disso. Consequência: se a classificação falhar, o ticket fica sem classificação (`classificacao: null`); só o `503` é repetido, dentro da própria chamada (veja [Limitações conhecidas](#limitações-conhecidas)).
 
 2. **Resposta da IA validada antes de ir ao banco.** O texto devolvido pelo Gemini passa por `JSON.parse` e depois é conferido contra os enums `TipoCategoria` e `Urgencia` do Prisma. Qualquer coisa fora disso (texto vazio, JSON quebrado, categoria inventada) vira `ClassificacaoInvalidaError` e nada é salvo.
 
@@ -153,7 +204,9 @@ Os dois tickets `OUTRO` do gabarito foram classificados como `SOLICITACAO`.
 
 - **JSON malformado e rotas inexistentes devolvem HTML.** Não há middleware de erro nem handler de 404 próprios, então essas respostas são as páginas padrão do Express, não `{ "error": ... }`. Body com JSON inválido recebe `400` em HTML, e rota inexistente recebe `404` em HTML. Como `NODE_ENV` não é definido no projeto, a página de erro do JSON malformado inclui o stack trace.
 - **Campos acima de 200 caracteres viram `500`.** `nomeSolicitante`, `emailSolicitante` e `titulo` são `VarChar(200)` no banco, e a rota não valida o tamanho antes de salvar. Um valor maior estoura a coluna e a API responde `500` em vez de `400`.
-- **Classificação que falha não é refeita.** Se a chamada ao Gemini falhar (por exemplo, `503`), o ticket fica com `classificacao: null` e não há nova tentativa.
+- **Cota do plano gratuito do Gemini.** O plano gratuito permite 20 requisições por dia por modelo; passando disso, a API responde `429`. Esse erro não é repetido de propósito, porque esperar alguns segundos não devolve cota diária. Uma execução completa do gabarito (15 tickets, e mais quando ele crescer) pode não caber em um dia, e os tickets criados pela tela gastam a mesma cota.
+- **`503` é repetido até 3 vezes.** Quando o servidor do Gemini está sobrecarregado (`503`), a chamada é refeita até 3 vezes no total, com espera de 3 s e depois 6 s. Se as 3 falharem, o ticket fica sem classificação (`classificacao: null`), e a tela mostra "sem classificação" depois de 2 minutos.
+- **Não existe rotina que reclassifique tickets pendentes.** Um ticket que ficou sem classificação continua assim; nada tenta classificá-lo de novo depois.
 
 ## Como rodar
 
@@ -196,8 +249,6 @@ Pré-requisitos: Docker com Docker Compose; Node 22 e npm no host, para os coman
    ```
 
 5. **Rodar as migrations** com `npm run migrate` (veja a seção sobre `DATABASE_URL` logo abaixo).
-
-> **TODO (Gemini no Docker):** a classificação pelo Gemini ainda não foi verificada de ponta a ponta com a API rodando no container. Até isso ser confirmado, considere que os tickets podem ficar sem classificação.
 
 ### Portas
 
