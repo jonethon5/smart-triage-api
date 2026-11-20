@@ -8,27 +8,29 @@ app.use(express.json());
 app.use(express.static("public"));
 
 app.get("/health", (req, res) => {
-    res.json({ status: "ok" });
+  res.json({ status: "ok" });
 });
 
 app.use("/auth", authRouter);
 app.use("/tickets", ticketsRouter);
 
-
-
 // 1. rota que não existe
 app.use((req: Request, res: Response) => {
-    res.status(404).json({ erro: "Rota não encontrada" });
+  res.status(404).json({ erro: "Rota não encontrada" });
 });
 
 // 2. erro inesperado (o Express reconhece pelo 4º parâmetro)
 app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
-    // JSON malformado no corpo: o body parser marca o erro com este type
-    if (err instanceof SyntaxError && "type" in err && err.type === "entity.parse.failed") {
-        res.status(400).json({ erro: "JSON inválido" });
-        return;
-    }
+  // JSON malformado no corpo: o body parser marca o erro com este type
+  if (
+    err instanceof SyntaxError &&
+    "type" in err &&
+    err.type === "entity.parse.failed"
+  ) {
+    res.status(400).json({ erro: "JSON inválido" });
+    return;
+  }
 
-    console.error(err);
-    res.status(500).json({ erro: "Erro interno" });
+  console.error(err);
+  res.status(500).json({ erro: "Erro interno" });
 });
