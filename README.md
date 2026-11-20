@@ -2,9 +2,7 @@
 
 API de triagem de tickets de suporte. Qualquer pessoa abre um ticket sem login, atendentes autenticados assumem e fecham os tickets, e uma IA (Gemini) classifica cada ticket por **categoria** e **urgência**. Acompanha um front-end simples em [public/](public/) para abrir tickets e para a área do atendente.
 
-<!-- TODO: GIF de demonstração -->
-
-> **TODO:** GIF de demonstração aqui.
+![Demonstração](docs/demo.gif)
 
 ## Stack
 
@@ -134,6 +132,7 @@ Os dois tickets `OUTRO` do gabarito foram classificados como `SOLICITACAO`.
 
 - **A amostra é pequena.** Com 14 tickets, cada acerto ou erro move a taxa em cerca de 7 pontos. Os 100% em urgência não significam que o modelo nunca erra urgência; significam que não errou nesses 14.
 - **O prompt ainda não foi refinado.** É a primeira versão, sem ajustes feitos a partir dos erros observados.
+- **O resultado varia entre execuções.** O modelo não é determinístico, então rodar o mesmo gabarito de novo pode dar outros números. A tabela é de uma única execução e será conferida em novas rodadas.
 - O piso de referência da tabela foi calculado sobre os 15 tickets do gabarito. Sem "Chamados não abre" (`TECNICO`/`ALTA`), nos 14 avaliados, o piso fica em 6/14 (~43%) tanto em categoria quanto em urgência.
 
 ### Como reproduzir a taxa de acerto
@@ -197,8 +196,7 @@ São cerca de 15 chamadas ao Gemini, de 10 a 50 s cada, então a avaliação lev
 
 4. **Papel no registro é sempre `ATENDENTE`.** A rota de registro lê apenas `email` e `senha` do body e passa `ATENDENTE` fixo. Ninguém consegue se registrar como `ADMIN` mandando um campo `role`.
 
-5. **`status` e `resolvido` são campos separados no `Ticket`.** Hoje, fechar um ticket marca `status = FECHADO` e `resolvido = true` juntos, e não existe rota que feche um ticket sem resolvê-lo.
-   > **TODO:** explicar o motivo de manter os dois campos separados.
+5. **`status` e `resolvido` são campos separados.** O `status` mostra onde o ticket está no atendimento: `ABERTO` (ninguém pegou), `EM_ANDAMENTO` (alguém assumiu) e `FECHADO` (o atendimento acabou). O `resolvido` mostra o resultado: se o problema do cliente foi mesmo sanado. Os dois nem sempre andam juntos: se pedimos uma evidência e o cliente some, o ticket é fechado, mas o problema não foi resolvido. Com só o `status`, todo ticket fechado pareceria resolvido, e um relatório de tickets resolvidos ficaria inflado. Hoje a rota de fechar sempre grava `resolvido = true`; o campo separado deixa o modelo pronto para fechar sem resolver, o que ainda não está exposto na API.
 
 ## Limitações conhecidas
 
