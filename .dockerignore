@@ -1,0 +1,20 @@
+# Arquivos que não entram no contexto de build da imagem (COPY . .).
+# As dependências são instaladas dentro da imagem pelo `npm install`.
+node_modules
+dist
+coverage
+*.log
+
+# Segredos: as variáveis chegam ao container pelo env_file do compose,
+# nunca pela imagem.
+.env
+
+# Histórico do git, documentação e mídia da demo não são usados pela aplicação.
+.git
+docs
+
+# Configurações locais de ferramentas de IA/editor (também ignoradas pelo git).
+.claude
+.windsurf
+.agents
+skills-lock.json

@@ -1,0 +1,182 @@
+{
+  "info": {
+    "name": "smart-triage-api",
+    "description": "Rotas da smart-triage-api.\n\nComo usar:\n1. Suba a API (docker compose up -d) e confira {{baseUrl}} nas variáveis da coleção.\n2. Rode \"Registrar atendente\" e depois \"Login\" com o mesmo e-mail e senha.\n3. Copie o accessToken da resposta do login para a variável {{token}} (Current value). O token expira em 15 minutos.\n4. Ajuste {{ticketId}} com o id de um ticket existente.\n\nOs dados dos exemplos são fictícios. Não salve tokens nem senhas reais nesta coleção.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string",
+      "description": "Cole aqui o accessToken devolvido pelo login (só no Current value)."
+    },
+    {
+      "key": "ticketId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Registrar atendente",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"seu-email@exemplo.com\",\n  \"senha\": \"<senha>\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            },
+            "description": "Cria um usuário com papel ATENDENTE. Respostas: 201 (usuário sem a senha), 400, 409 (e-mail já cadastrado)."
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"seu-email@exemplo.com\",\n  \"senha\": \"<senha>\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Devolve { accessToken, refreshToken }. Copie o accessToken para a variável {{token}}. Respostas: 200, 400, 401."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tickets",
+      "item": [
+        {
+          "name": "Abrir ticket (público)",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nomeSolicitante\": \"Ana Souza\",\n  \"emailSolicitante\": \"seu-email@exemplo.com\",\n  \"titulo\": \"Impressora do financeiro parou\",\n  \"descricao\": \"A impressora do financeiro parou de funcionar hoje cedo.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tickets",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets"]
+            },
+            "description": "Não exige login. Responde 201 com o ticket e dispara a classificação pelo Gemini em segundo plano. Respostas: 201, 400."
+          }
+        },
+        {
+          "name": "Listar tickets",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tickets",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "ABERTO",
+                  "description": "Opcional: ABERTO, EM_ANDAMENTO ou FECHADO.",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Exige {{token}}. Lista os tickets, mais recentes primeiro, com a classificação. Respostas: 200, 400 (status inválido), 401."
+          }
+        },
+        {
+          "name": "Buscar ticket por id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tickets/{{ticketId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets", "{{ticketId}}"]
+            },
+            "description": "Exige {{token}}. Inclui o campo classificacao (null se ainda não houver). Respostas: 200, 400, 401, 404."
+          }
+        },
+        {
+          "name": "Assumir ticket",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tickets/{{ticketId}}/assumir",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets", "{{ticketId}}", "assumir"]
+            },
+            "description": "Exige {{token}}. Só funciona em ticket ABERTO; o ticket vira EM_ANDAMENTO. Respostas: 200, 400, 401, 404, 409."
+          }
+        },
+        {
+          "name": "Fechar ticket",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tickets/{{ticketId}}/fechar",
+              "host": ["{{baseUrl}}"],
+              "path": ["tickets", "{{ticketId}}", "fechar"]
+            },
+            "description": "Exige {{token}}. Só funciona em ticket EM_ANDAMENTO e só para quem assumiu; o ticket vira FECHADO. Respostas: 200, 400, 401, 403, 404, 409."
+          }
+        }
+      ]
+    }
+  ]
+}
