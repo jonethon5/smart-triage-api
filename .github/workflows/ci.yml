@@ -34,3 +34,7 @@ jobs:
       - run: npm run lint
 
       - run: npm run format:check
+
+      # Smoke tests com Supertest: não acessam o banco, então a DATABASE_URL
+      # falsa do job basta
+      - run: npm test
