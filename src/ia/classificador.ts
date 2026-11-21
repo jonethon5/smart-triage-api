@@ -81,11 +81,15 @@ export async function classificarTicket(titulo: string, descricao: string) {
       break;
     } catch (error) {
       const ehUltima = tentativa === MAX_TENTATIVAS;
+      // Só o 503 (servidor sobrecarregado) é passageiro e vale repetir. O 429 é
+      // cota diária esgotada: tentar de novo em segundos não devolve a cota.
       const ehOcupado = error instanceof ApiError && error.status === 503;
 
       if (!ehOcupado || ehUltima) {
         throw error;
       }
+      // Espera crescente (3 s, depois 6 s) para dar tempo de o servidor aliviar,
+      // em vez de repetir logo em seguida e cair na mesma sobrecarga.
       await esperar(3000 * tentativa);
     }
   }
@@ -94,6 +98,8 @@ export async function classificarTicket(titulo: string, descricao: string) {
     throw new ClassificacaoInvalidaError();
   }
 
+  // A IA devolve texto livre: mesmo pedindo JSON, pode vir vazio, quebrado ou
+  // com uma categoria inventada. Por isso nada vai ao banco sem validação.
   const texto = response.text;
 
   if (!texto) {
