@@ -16,7 +16,7 @@ app.use("/tickets", ticketsRouter);
 
 // 1. rota que não existe
 app.use((req: Request, res: Response) => {
-  res.status(404).json({ erro: "Rota não encontrada" });
+  res.status(404).json({ error: "Rota não encontrada" });
 });
 
 // 2. erro inesperado (o Express reconhece pelo 4º parâmetro)
@@ -27,10 +27,10 @@ app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
     "type" in err &&
     err.type === "entity.parse.failed"
   ) {
-    res.status(400).json({ erro: "JSON inválido" });
+    res.status(400).json({ error: "JSON inválido" });
     return;
   }
 
   console.error(err);
-  res.status(500).json({ erro: "Erro interno" });
+  res.status(500).json({ error: "Erro interno" });
 });

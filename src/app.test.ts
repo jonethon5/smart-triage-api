@@ -12,7 +12,7 @@ describe("app", () => {
   it("rota inexistente responde 404 em JSON", async () => {
     const res = await request(app).get("/rota-que-nao-existe");
     expect(res.status).toBe(404);
-    expect(res.body).toEqual({ erro: "Rota não encontrada" });
+    expect(res.body).toEqual({ error: "Rota não encontrada" });
   });
 
   it("JSON malformado responde 400 em JSON", async () => {
@@ -21,7 +21,7 @@ describe("app", () => {
       .set("Content-Type", "application/json")
       .send('{"email": ');
     expect(res.status).toBe(400);
-    expect(res.body).toEqual({ erro: "JSON inválido" });
+    expect(res.body).toEqual({ error: "JSON inválido" });
   });
 
   it("listar tickets sem token responde 401", async () => {
