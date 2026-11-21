@@ -13,6 +13,7 @@ API de triagem de tickets de suporte. Qualquer pessoa abre um ticket sem login, 
 - Front-end em HTML, CSS e JavaScript puro, sem framework e sem etapa de build
 - Docker Compose (app, postgres e adminer)
 - ESLint + Prettier
+- Testes com Vitest e Supertest
 - CI no GitHub Actions
 
 ## Ciclo de vida de um ticket
@@ -61,16 +62,16 @@ Regras:
 
 ### Erros
 
-As respostas de erro das rotas da API têm o formato `{ "error": "<mensagem>" }`. As exceções (JSON malformado e rotas inexistentes) estão em [Limitações conhecidas](#limitações-conhecidas).
+Todas as respostas de erro da API têm o formato `{ "error": "<mensagem>" }`, inclusive as de rota inexistente (`404`), JSON malformado no body (`400`) e erros inesperados (`500`), que são tratadas em [src/app.ts](src/app.ts).
 
-| Status | Quando                                                                                               |
-| ------ | ---------------------------------------------------------------------------------------------------- |
-| `400`  | Campos do body ausentes ou que não são texto, `:id` que não é inteiro, `status` inválido na listagem |
-| `401`  | Token ausente, inválido ou expirado; credenciais erradas no login; refresh token inválido            |
-| `403`  | Tentativa de fechar um ticket assumido por outro atendente                                           |
-| `404`  | Ticket não encontrado                                                                                |
-| `409`  | Email já cadastrado; ticket em um status que não permite a ação (assumir ou fechar)                  |
-| `500`  | Erro inesperado ou segredo JWT ausente na configuração                                               |
+| Status | Quando                                                                                                                        |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `400`  | JSON malformado no body; campos do body ausentes ou que não são texto, `:id` que não é inteiro, `status` inválido na listagem |
+| `401`  | Token ausente, inválido ou expirado; credenciais erradas no login; refresh token inválido                                     |
+| `403`  | Tentativa de fechar um ticket assumido por outro atendente                                                                    |
+| `404`  | Ticket não encontrado; rota inexistente                                                                                       |
+| `409`  | Email já cadastrado; ticket em um status que não permite a ação (assumir ou fechar)                                           |
+| `500`  | Erro inesperado ou segredo JWT ausente na configuração                                                                        |
 
 ## Front-end
 
@@ -200,7 +201,6 @@ São cerca de 15 chamadas ao Gemini, de 10 a 50 s cada, então a avaliação lev
 
 ## Limitações conhecidas
 
-- **JSON malformado e rotas inexistentes devolvem HTML.** Não há middleware de erro nem handler de 404 próprios, então essas respostas são as páginas padrão do Express, não `{ "error": ... }`. Body com JSON inválido recebe `400` em HTML, e rota inexistente recebe `404` em HTML. Como `NODE_ENV` não é definido no projeto, a página de erro do JSON malformado inclui o stack trace.
 - **Campos acima de 200 caracteres viram `500`.** `nomeSolicitante`, `emailSolicitante` e `titulo` são `VarChar(200)` no banco, e a rota não valida o tamanho antes de salvar. Um valor maior estoura a coluna e a API responde `500` em vez de `400`.
 - **Cota do plano gratuito do Gemini.** O plano gratuito permite 20 requisições por dia por modelo; passando disso, a API responde `429`. Esse erro não é repetido de propósito, porque esperar alguns segundos não devolve cota diária. Uma execução completa do gabarito (15 tickets, e mais quando ele crescer) pode não caber em um dia, e os tickets criados pela tela gastam a mesma cota.
 - **`503` é repetido até 3 vezes.** Quando o servidor do Gemini está sobrecarregado (`503`), a chamada é refeita até 3 vezes no total, com espera de 3 s e depois 6 s. Se as 3 falharem, o ticket fica sem classificação (`classificacao: null`), e a tela mostra "sem classificação" depois de 2 minutos.
@@ -208,7 +208,7 @@ São cerca de 15 chamadas ao Gemini, de 10 a 50 s cada, então a avaliação lev
 
 ## Como rodar
 
-Pré-requisitos: Docker com Docker Compose; Node 22 e npm no host, para os comandos do Prisma.
+Pré-requisitos: Docker com Docker Compose; Node 22 e npm no host, para os comandos do Prisma (também testado com Node 24).
 
 1. **Clonar o repositório.**
 
@@ -238,15 +238,21 @@ Pré-requisitos: Docker com Docker Compose; Node 22 e npm no host, para os coman
    npm run generate
    ```
 
-   > **TODO:** confirmar esse passo num clone limpo (se o client gerado no host funciona dentro do container pelo volume montado).
-
 4. **Subir os containers:**
 
    ```bash
    docker compose up -d --build
    ```
 
-5. **Rodar as migrations** com `npm run migrate` (veja a seção sobre `DATABASE_URL` logo abaixo).
+5. **Rodar as migrations** dentro do container (veja a seção sobre `DATABASE_URL` logo abaixo):
+
+   ```bash
+   docker compose exec app npm run migrate
+   ```
+
+Testado em um clone limpo em 20/11/2026 (Windows, Docker Compose, Node 24): setup, migrations, fluxo da API e `npm test` funcionaram.
+
+> O `docker-compose.yml` fixa `container_name: smart-triage-app`, então o projeto não sobe duas vezes ao mesmo tempo na mesma máquina.
 
 ### Portas
 
@@ -264,11 +270,7 @@ O `.env.example` usa o host `postgres` na porta `5432`:
 DATABASE_URL=postgresql://postgres:<senha>@postgres:5432/smart_triage
 ```
 
-Esse endereço só funciona **dentro da rede do Docker**, onde `postgres` é o nome do serviço. Por isso a migration pode rodar dentro do container sem mudar nada:
-
-```bash
-docker compose exec app npm run migrate
-```
+Esse endereço só funciona **dentro da rede do Docker**, onde `postgres` é o nome do serviço. Por isso o passo 5 roda a migration dentro do container, sem mudar nada. Rodando `npm run migrate` direto no host com esse valor, o Prisma falha com `P1001: Can't reach database server at postgres:5432`.
 
 Rodando comandos do Prisma **direto no Windows** (fora do Docker), o host é `localhost:5434`. Não troque o valor no `.env`, porque o container da aplicação usa a mesma variável. Sobrescreva só no terminal; o `dotenv` não substitui uma variável que já existe no ambiente:
 
@@ -279,6 +281,17 @@ npm run migrate
 
 O servidor não carrega o `.env` sozinho (não há `dotenv` em `src/`); as variáveis chegam ao container pelo `env_file` do `docker-compose.yml`. Por isso o caminho suportado para rodar a API é o Docker.
 
+## Coleção do Postman
+
+A coleção [docs/postman/smart-triage-api.postman_collection.json](docs/postman/smart-triage-api.postman_collection.json) tem as rotas de registro, login e tickets.
+
+1. No Postman, use **Import** e selecione o arquivo.
+2. Nas variáveis da coleção, confira `{{baseUrl}}`, que vem como `http://localhost:3001` (a porta do `app` no host).
+3. Rode **Registrar atendente** e depois **Login**, e cole o `accessToken` da resposta na variável `{{token}}`. O token expira em 15 minutos.
+4. Ajuste `{{ticketId}}` para o id de um ticket existente antes de buscar, assumir ou fechar.
+
+Registro, login e abertura de ticket não usam autenticação; as demais rotas usam `Bearer {{token}}`. Os exemplos usam dados fictícios e a coleção não contém tokens nem senhas.
+
 ## Scripts
 
 | Script                            | O que faz                                                                                                              |
@@ -287,6 +300,7 @@ O servidor não carrega o `.env` sozinho (não há `dotenv` em `src/`); as vari�
 | `npm start`                       | Sobe o servidor com `tsx`, sem watch                                                                                   |
 | `npm run migrate`                 | `prisma migrate dev` com `prisma7.config.ts`                                                                           |
 | `npm run generate`                | `prisma generate` com `prisma7.config.ts`                                                                              |
+| `npm test`                        | Roda os 4 testes de fumaça com Vitest ([src/app.test.ts](src/app.test.ts)); não precisam de banco nem de Gemini        |
 | `npm run avaliar`                 | Roda a avaliação de acerto da IA ([src/ia/avaliacao.ts](src/ia/avaliacao.ts)); precisa de `GEMINI_API_KEY` no ambiente |
 | `npm run lint` / `lint:fix`       | ESLint                                                                                                                 |
 | `npm run format` / `format:check` | Prettier                                                                                                               |
@@ -295,13 +309,16 @@ O servidor não carrega o `.env` sozinho (não há `dotenv` em `src/`); as vari�
 
 ```
 src/
-├── server.ts          # Express: /health, /auth e /tickets
+├── app.ts             # Express: /health, /auth, /tickets, 404 e handler de erro em JSON
+├── app.test.ts        # smoke tests (Vitest + Supertest)
+├── server.ts          # sobe o app na porta 3000
 ├── auth/              # registro, login, refresh, middleware JWT
 ├── tickets/           # abrir, listar, buscar, assumir, fechar
 ├── ia/                # classificador (Gemini), salvamento e avaliação
 ├── db/client.ts       # Prisma Client com o adapter do Postgres
 └── types/express.d.ts # req.user tipado
 public/                # front-end (HTML, CSS e JS puro)
+docs/                  # GIF da demo e coleção do Postman
 prisma/
 ├── schema.prisma
 └── migrations/
@@ -309,14 +326,17 @@ prisma/
 
 ## CI
 
-O workflow [.github/workflows/ci.yml](.github/workflows/ci.yml) roda em push e pull request para `main`: `npm ci`, `prisma generate`, checagem de tipos (`tsc --noEmit`), `npm run lint` e `npm run format:check`.
+O workflow [.github/workflows/ci.yml](.github/workflows/ci.yml) roda em push e pull request para `main`: `npm ci`, `prisma generate`, checagem de tipos (`tsc --noEmit`), ESLint (`npm run lint`), Prettier (`npm run format:check`) e `npm test`, que roda os 4 testes de fumaça de [src/app.test.ts](src/app.test.ts), sem banco e sem Gemini.
 
 ## Próximos passos
 
-- **Testes automatizados.** O Vitest está instalado e existe o script `npm test`, mas ainda não há nenhum teste, e o CI não roda testes.
-
-> **TODO:** outros próximos passos.
+- **Timeout na chamada ao Gemini.** Hoje a chamada não tem limite de tempo; se o Gemini não responder, a classificação pode ficar pendente por muito tempo.
+- **Reclassificar tickets pendentes.** Uma rotina que tente de novo os tickets que ficaram com `classificacao: null` (veja [Limitações conhecidas](#limitações-conhecidas)).
+- **Validar o tamanho dos campos.** Recusar com `400` os valores acima de 200 caracteres em `nomeSolicitante`, `emailSolicitante` e `titulo`, que hoje viram `500`.
+- **Testes dos fluxos de auth e tickets.** Hoje há 4 testes de fumaça em [src/app.test.ts](src/app.test.ts) (Vitest + Supertest): `/health`, rota inexistente, JSON malformado e listagem de tickets sem token. Nenhum deles usa o banco. Faltam testes dos fluxos de registro, login e refresh e do ciclo de um ticket (abrir, assumir e fechar).
+- **Prompt v2 com tickets de validação separados.** Ajustar o prompt a partir dos erros da v1 e medir o resultado em tickets de validação separados do gabarito usado nos ajustes.
+- **zod.** Trocar as checagens manuais de `typeof` nas rotas por schemas do zod.
 
 ## Licença
 
-> **TODO:** definir a licença. O `package.json` declara `ISC`, mas não há arquivo `LICENSE` no repositório.
+MIT. Veja o arquivo [LICENSE](LICENSE).
